@@ -1,0 +1,252 @@
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:fieldinputservice="services.fieldinputservice.*"
+			   xmlns:importexcelservice="services.importexcelservice.*"
+			   width="800" height="600" backgroundColor="#23AAE2" close="closeHandler(event)"
+			   creationComplete="init()" fontSize="11" title="Import Data">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.as3xls.xls.ExcelFile;
+			import com.csv.EncodeUtil;
+			import com.icd.fieldlogger.myHome.report.infomation.infoModule;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.HeaderEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import services.importexcelservice.ImportExcelService;
+			
+			
+			
+			/////**Import from Execl**/////
+			private var fileRef:FileReference;
+			private var ba:ByteArray;
+			private var xlFile:ExcelFile;
+			private var hdrs:Array;
+			private var runOnce:Boolean;
+			
+			[Bindable]private var xlsheet:ArrayCollection;
+			[Bindable]private var arrInput:ArrayCollection = new ArrayCollection();
+			//private const 
+			private function init():void {
+				fileRef = new FileReference();
+				fileRef.addEventListener(Event.SELECT, fileRef_select);
+				fileRef.addEventListener(ProgressEvent.PROGRESS, fileRef_progress);
+				fileRef.addEventListener(Event.COMPLETE, fileRef_complete);
+				
+				ba = new ByteArray();
+				hdrs = new Array();
+				xlsheet = new ArrayCollection();
+			}
+			
+			protected function lbtnUpload_clickHandler(event:MouseEvent):void {
+				checkDump = false;
+				var XLS_FILTER:FileFilter = new FileFilter("Import Excels", "*.xls;*.xlsx;*.csv;*.xlsm");
+				fileRef.browse([XLS_FILTER]);
+				message.text = "";
+			}
+			
+			private function fileRef_select(evt:Event):void {
+				try {
+					message.text = "size (bytes): "+ fileRef.size;
+					message.text += " | " + fileRef.name
+					fileRef.load();
+				} catch(err:Error) {
+					message.text = "ERROR: zero-byte file";
+				}
+			}
+			
+			private function fileRef_progress(evt:ProgressEvent):void{
+				progressBar.visible = true;
+			}
+			
+			private var fr:FileReference;
+			[Bindable] private var totalrows:int = 0;
+			[Bindable] private var workrow:int = 0;
+			[Bindable] private var statsCollection:ArrayCollection = new ArrayCollection();
+			private function fileRef_complete(evt:Event):void{
+
+				if(evt.target.type == '.xls' || evt.target.type == '.xlsx' || evt.target.type == '.xlsm'){
+					xlFile = new ExcelFile();
+					
+					message.text += " (complete)";
+					progressBar.visible = false;
+					
+					ba=fileRef.data;
+					xlFile.loadFromByteArray(ba);
+					xlsheet = xlFile.sheets[0].values;
+					
+					hdrs =  xlsheet[0];
+					xlsheet.removeItemAt(0);
+					
+					grid.dataProvider = xlsheet;
+					
+				}if(evt.target.type == '.csv'){
+					//trace(fileRef.data);
+					var crlf:String = String.fromCharCode(13, 10);
+					var regEx:RegExp = new RegExp(crlf, "g");
+					var regEx1:RegExp = /\\\"/g;
+					var data:String = EncodeUtil.convertByteArrayToString(fileRef.data).replace(regEx,"\\n");
+					var lines:Array = data.split(/\\n,,,,,/);
+					var columns:Array = [];
+					var textProvider:ArrayCollection = new ArrayCollection();
+					
+					for (var i:int = 0; i<lines.length; i++) {
+						
+						var line:String = lines[i];
+						var lineArray:Array = line.split(/,/);
+						
+						for(var j:int = 0; j<lineArray.length; j++){
+							var prop:String = lineArray[j];
+							
+						
+							if(i==0){
+								var c:DataGridColumn = new DataGridColumn(prop);
+								c.dataField = prop;
+								columns.push(c);
+								//o.addItem(lineArray[j]);
+							}
+							
+						}
+						
+						var o:Object = new Object();
+						o.inputID 		= lineArray[0];
+						o.input_date 	= lineArray[1];
+						o.input_1 		= lineArray[2];
+						o.input_2 		= lineArray[3];
+						o.input_3 		= lineArray[4];
+						o.input_4 		= lineArray[5]; 
+						textProvider.addItem(o); 
+					}
+							 grid.columns = columns;
+							textProvider.removeItemAt(0);
+							grid.dataProvider = textProvider;
+							//trace(ObjectUtil.toString(grid.dataProvider));
+							this.addElement(grid); 
+				}
+					
+			}
+			
+			private function updateHeaders(): void {
+				if(grid.columnCount>=1){
+					for (var i:int=0; i<=grid.columnCount-1; i++){
+						grid.columns[i].headerText=hdrs[i];
+					}
+				} 
+			}
+
+			/////**Damp to DataBase**/////
+			protected function clickHandler(event:MouseEvent):void{
+				arrInput = new ArrayCollection();
+				var ac:ArrayCollection = grid.dataProvider as ArrayCollection;
+				for (var i:int = 0; i < ac.length; i++) 
+				{
+					if(ac[i][0].value){
+						var o:Object = new Object();
+						
+						o.fieldID		= infoModule.reportVO.reportID;
+						o.inputID 		= ac[i][0].value;
+						o.input_date 	= dtf.format(ac[i][1].value);
+						o.input_time	= ttf.format(ac[i][1].value);
+						if(grid.columnCount >= 3) 	o.input_1 		= ac[i][2].value;
+						if(grid.columnCount >= 4) 	o.input_2 		= ac[i][3].value;
+						if(grid.columnCount >= 5)	o.inpou_3 		= ac[i][4].value;
+						if(grid.columnCount >= 6)	o.inpou_4 		= ac[i][5].value;
+						if(grid.columnCount >= 7)	o.inpou_5 		= ac[i][6].value;
+						if(grid.columnCount >= 8)	o.inpou_6 		= ac[i][7].value;
+						if(grid.columnCount >= 9)	o.inpou_7 		= ac[i][8].value;
+						if(grid.columnCount >= 10)	o.inpou_8 		= ac[i][9].value;
+						if(grid.columnCount >= 11)	o.inpou_9 		= ac[i][10].value;
+						if(grid.columnCount >= 12)	o.inpou_10 		= ac[i][11].value;
+						if(grid.columnCount >= 13)	o.inpou_11 		= ac[i][12].value;
+						if(grid.columnCount >= 14)	o.inpou_12 		= ac[i][13].value;
+						if(grid.columnCount >= 15)	o.inpou_13 		= ac[i][14].value;
+						if(grid.columnCount >= 16)	o.inpou_14 		= ac[i][15].value;
+						if(grid.columnCount >= 17)	o.inpou_15 		= ac[i][16].value;
+						if(grid.columnCount >= 18)	o.inpou_16 		= ac[i][17].value; 
+						arrInput.addItem(o);
+					}
+				}
+				createField_report_inputByImportExcelResult.token = importExcelService.createField_report_inputByImportExcel(arrInput);
+			}
+			[Bindable] private var checkDump:Boolean = true;
+			protected function createField_report_inputByImportExcelResult_resultHandler(event:ResultEvent):void{
+				checkDump = true;
+				this.closeButton.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+				Alert.show("Successfully","Dump Data to Database");
+				//trace(ObjectUtil.toString(event.result));
+			}
+			
+			
+			/////**Cancel**/////
+			protected function lbtnCancel_clickHandler(event:MouseEvent):void{
+				Alert.show("Do you want to Cancel this Data?","Are you sure?", Alert.YES | Alert.NO, this, ConfirmCancel, null, Alert.YES);
+			}
+			protected function ConfirmCancel(eventObj:CloseEvent):void {
+				if(eventObj.detail==Alert.YES){
+					xlsheet = new ArrayCollection();
+					grid.dataProvider = xlsheet;
+					
+				}
+			}
+			
+			/////**Close**/////
+			protected function closeHandler(event:CloseEvent):void	{
+				if(checkDump === false){
+					Alert.show("Do you want to exit? if you exit, your data will lost","Are you sure?", Alert.YES | Alert.NO, this, ConfirmExit, null, Alert.YES);
+				}else{
+					PopUpManager.removePopUp(this);
+				}
+			}
+			protected function ConfirmExit(eventObj:CloseEvent):void {
+				if(eventObj.detail==Alert.YES){
+					PopUpManager.removePopUp(this);
+				}
+			}
+		
+
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<mx:DateFormatter id="dtf" formatString="YYYY-MM-DD"/>
+		<mx:DateFormatter id="ttf" formatString="LL:NN:SS"/>
+
+		<importexcelservice:ImportExcelService id="importExcelService"
+											   fault="Alert.show(event.fault.faultString + '\n' + event.fault.faultDetail)"
+											   showBusyCursor="true"/>
+		<s:CallResponder id="createField_report_inputByImportExcelResult" result="createField_report_inputByImportExcelResult_resultHandler(event)"/>
+	</fx:Declarations>
+	<s:BorderContainer left="5" right="5" top="5" bottom="5" borderVisible="false" cornerRadius="5">
+	
+		<mx:DataGrid id="grid" left="5" right="5" top="70" bottom="5" borderColor="#E1E1E1"
+					 borderVisible="true" updateComplete="updateHeaders()">
+		</mx:DataGrid>
+		<s:VGroup left="10" top="10" gap="8">
+			<s:HGroup right="10" top="10">
+				<mx:LinkButton id="lbtnUpload" left="10" top="20" label="Upload File" click="lbtnUpload_clickHandler(event)" fontSize="10"
+						   		fontWeight="bold" icon="@Embed(source='../images/table_excel.png')"
+						   		paddingLeft="5" paddingRight="5" toolTip="click to upload excel file"/>
+				<mx:LinkButton id="lbtnCancel" label="Cancel" click="lbtnCancel_clickHandler(event)" fontSize="10" fontWeight="bold"
+							   icon="@Embed(source='../images/table_delete.png')" paddingLeft="5"
+							   paddingRight="5" toolTip="click to Cancel Data" enabled="{xlsheet.length > 0}"/>
+			</s:HGroup>
+			<mx:Label id="message" top="22" height="25" horizontalCenter="-285"/>
+		</s:VGroup>
+			<mx:LinkButton right="10" top="10" label="Dump to Database" click="clickHandler(event)"
+						   fontSize="10" fontWeight="bold"
+						   icon="@Embed(source='../images/database_table.png')" paddingLeft="5"
+						   paddingRight="5" toolTip="click to dump to database" enabled="{xlsheet.length > 0}"/>
+		
+			<mx:ProgressBar id="progressBar" visible="false" top="20" horizontalCenter="0"
+							indeterminate="true"/>
+	</s:BorderContainer>
+</s:TitleWindow>
