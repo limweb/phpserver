@@ -5,8 +5,7 @@ $webroot = $_SERVER['DOCUMENT_ROOT'];
 $configfile = "$dir/amf_config.ini";
 
 //default zend install directory
-// $zenddir = $webroot. '/ZendFramework/library';
-$zenddir = $webroot.'/';
+$zenddir = $webroot. '/ZendFramework/library';
 
 //Load ini file and locate zend directory
 if(file_exists($configfile)) {
@@ -20,6 +19,9 @@ if(file_exists($configfile)) {
 	}
 }
 
+
+$webroot = __DIR__;
+$zenddir = __DIR__;
 
 // Setup include path
 	//add zend directory to include path

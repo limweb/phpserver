@@ -1,5 +1,5 @@
 {
     "require": {
-        "laravel/database": "dev-master"
+        "illuminate/database": "~4.2"
     }
 }

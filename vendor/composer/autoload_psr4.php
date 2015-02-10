@@ -6,6 +6,4 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
-    'Luracast\\Config\\' => array($vendorDir . '/luracast/config/src/Luracast'),
-    'Bootstrap\\' => array($vendorDir . '/laravel/database/bootstrap'),
 );

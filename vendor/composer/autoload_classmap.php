@@ -6,6 +6,4 @@ $vendorDir = dirname(dirname(__FILE__));
 $baseDir = dirname($vendorDir);
 
 return array(
-    'DatabaseSeeder' => $vendorDir . '/laravel/database/app/database/seeds/DatabaseSeeder.php',
-    'User' => $vendorDir . '/laravel/database/app/models/User.php',
 );
