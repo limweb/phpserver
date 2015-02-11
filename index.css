@@ -1,0 +1,35 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+@namespace mx "library://ns.adobe.com/flex/mx";
+
+.centerBold {
+	fontWeight: bold;
+	textAlign: center;
+}
+
+mx|Alert {
+	color : #000000;
+	/*	backgroundAlpha: 0;*/
+	backgroundColor: #ffffff;
+	fontWeight:bold;
+	fontFamily: Arial;
+	borderAlpha: 0.1;
+	cornerRadius: 5;
+	borderColor: #23aae2;
+	chromeColor: #23aae2;
+	title-style-name : "title";
+}
+global
+{
+	chrome-color: #23aae2;
+	font-family: Arial;
+	font-weight: normal;
+}
+.myHeaderStyles {
+	color: red;
+	fontWeight: bold;
+	background-color:red;
+	background-disabled-color:red;
+	area-fill:true;
+	
+}
